@@ -115,6 +115,12 @@ export function buildConsoleHtml(engine, currentFinish, scaleTypeId) {
               <span class="led led-green"></span>
               <span class="btn-label">CLICK</span>
             </label>
+
+            <label class="hw-btn hw-toggle-pill" id="count-in-toggle" title="On: one bar of quiet 4-3-2-1 clicks, then the take starts on the downbeat. Off: recording starts right away. Saved in this browser.">
+              <input type="checkbox" id="count-in" ${engine.countInBars === 0 ? '' : 'checked'} />
+              <span class="led led-amber"></span>
+              <span class="btn-label" id="label-count-in">COUNT-IN</span>
+            </label>
           </div>
 
           <div class="lcd-master" aria-label="Master Clock and Groove Readout">
@@ -188,6 +194,11 @@ export function buildConsoleHtml(engine, currentFinish, scaleTypeId) {
             <a id="dl-link" class="hw-btn hw-btn-amber hidden" download="mrzesty-idea.wav">DOWNLOAD WAV</a>
             <button type="button" id="btn-reset" class="hw-btn hw-btn-util" title="Reset Session">
               <span>RESET</span>
+            </button>
+
+            <button type="button" id="btn-help" class="hw-btn hw-btn-util help-btn" title="How to use MrZesty" aria-haspopup="dialog" aria-controls="help-overlay">
+              <span class="help-btn-mark" aria-hidden="true">?</span>
+              <span>Help</span>
             </button>
 
             <button type="button" id="lite-toggle" class="hw-btn hw-btn-util lite-toggle" aria-pressed="false"
@@ -489,7 +500,7 @@ export function buildConsoleHtml(engine, currentFinish, scaleTypeId) {
             <div class="tape-instructions">
               <span><strong>1. ARM</strong> a vocal lane</span>
               <span class="sep">·</span>
-              <span><strong>2. RECORD TAKE</strong> (dry mic only)</span>
+              <span><strong>2. RECORD TAKE</strong> (count-in, then dry mic)</span>
               <span class="sep">·</span>
               <span><strong>3. HARMONIZE</strong> routes track to Unit 03</span>
             </div>
@@ -741,6 +752,21 @@ export function buildConsoleHtml(engine, currentFinish, scaleTypeId) {
 
       </div>
       <div class="wood-cheek wood-right" aria-hidden="true"></div>
+    </div>
+
+    <div id="count-in-overlay" class="count-in-overlay hidden" aria-live="polite" aria-hidden="true">
+      <div class="count-in-num" id="count-in-num">4</div>
+      <div class="count-in-caption">Get ready &middot; start singing on the downbeat</div>
+    </div>
+
+    <div id="help-overlay" class="help-overlay hidden" role="dialog" aria-modal="true" aria-labelledby="help-title">
+      <div class="help-panel">
+        <div class="help-head">
+          <h2 id="help-title">How to use MrZesty</h2>
+          <button type="button" id="help-close" class="hw-btn hw-btn-util help-close" aria-label="Close help">Close</button>
+        </div>
+        <div class="help-body" id="help-body"></div>
+      </div>
     </div>
   `;
 }

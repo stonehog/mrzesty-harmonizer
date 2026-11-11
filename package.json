@@ -1,6 +1,6 @@
 {
   "name": "mrzesty-harmonizer",
-  "version": "0.4.3",
+  "version": "0.4.4",
   "private": true,
   "description": "MrZesty — offline Studio Console sketchpad with sampled style kits, formant harmonizer & ADT doubler",
   "type": "module",

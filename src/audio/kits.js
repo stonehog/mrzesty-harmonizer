@@ -1370,17 +1370,20 @@ function sampledBassNote(ctx, dest, time, midi, dur, vel, style, voice, prevMidi
 /**
  * Soft metronome click. Accent = downbeat (always straight on the beat).
  */
-export function triggerClick(ctx, dest, time, accent) {
+export function triggerClick(ctx, dest, time, accent, opts = {}) {
   const osc = ctx.createOscillator();
   osc.type = 'sine';
   osc.frequency.value = accent ? 1320 : 880;
+  const peak = opts.gain ?? (accent ? 0.22 : 0.12);
+  const dur = opts.duration ?? 0.04;
   const g = ctx.createGain();
-  g.gain.setValueAtTime(accent ? 0.22 : 0.12, time);
-  g.gain.exponentialRampToValueAtTime(0.001, time + 0.04);
+  g.gain.setValueAtTime(peak, time);
+  g.gain.exponentialRampToValueAtTime(0.001, time + dur);
   osc.connect(g);
   g.connect(dest);
   osc.start(time);
-  osc.stop(time + 0.05);
+  osc.stop(time + dur + 0.01);
+  return { osc, gain: g };
 }
 
 /** Previous sounding note in a (looping) bass pattern, for 808 slides. */

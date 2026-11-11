@@ -24,9 +24,11 @@ import {
   escapeHtml,
   parsePatternLabel,
 } from './consoleTemplate.js';
+import { helpBodyHtml } from './helpContent.js';
 
 const FINISH_STORAGE_KEY = 'mrzesty.uiFinish';
 const LITE_STORAGE_KEY = 'mrzesty.lite';
+const COUNT_IN_STORAGE_KEY = 'mrzesty.countIn';
 /** Visual refresh caps (fps). Audio never depends on these. */
 const UI_FPS = 30;
 const UI_FPS_LITE = 15;
@@ -54,6 +56,13 @@ export function mountApp(root, engine) {
   }
   engine.liteMode = liteMode;
   const frameInterval = () => 1000 / (liteMode ? UI_FPS_LITE : UI_FPS);
+
+  try {
+    const savedCountIn = localStorage.getItem(COUNT_IN_STORAGE_KEY);
+    engine.countInBars = savedCountIn === '0' ? 0 : 1;
+  } catch {
+    engine.countInBars = 1;
+  }
 
   let scaleTypeId = 'major';
   let voicePans = [-25, 25, 0];
@@ -210,6 +219,14 @@ export function mountApp(root, engine) {
   const micClipFlagEl = $('#mic-clip-flag');
   const micCheckBtn = $('#mic-check');
   const liteBtn = $('#lite-toggle');
+  const countInEl = $('#count-in');
+  const countInLabel = $('#label-count-in');
+  const countInOverlay = $('#count-in-overlay');
+  const countInNumEl = $('#count-in-num');
+  const helpBtn = $('#btn-help');
+  const helpOverlay = $('#help-overlay');
+  const helpClose = $('#help-close');
+  const helpBody = $('#help-body');
 
   let lastDlUrl = null;
   let uiReady = false;
@@ -253,6 +270,56 @@ export function mountApp(root, engine) {
       micCheckBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
     }
     if (engine.micMeterActive) startMicMeterLoop();
+  }
+
+  function syncCountInToggle() {
+    const on = engine.countInBars > 0;
+    if (countInEl) countInEl.checked = on;
+    if (countInLabel) countInLabel.textContent = on ? 'COUNT-IN' : 'COUNT-IN OFF';
+  }
+
+  function setCountIn(on) {
+    engine.setCountIn(on);
+    try {
+      localStorage.setItem(COUNT_IN_STORAGE_KEY, on ? '1' : '0');
+    } catch {
+      /* ignore */
+    }
+    syncCountInToggle();
+    statusEl.textContent = on
+      ? 'Count-in on · one bar of clicks (4-3-2-1) before each take'
+      : 'Count-in off · recording starts right away';
+  }
+
+  function updateCountInOverlay() {
+    if (!countInOverlay || !countInNumEl) return;
+    const n = engine.countInDisplay();
+    if (!n) {
+      countInOverlay.classList.add('hidden');
+      countInOverlay.setAttribute('aria-hidden', 'true');
+      return;
+    }
+    countInNumEl.textContent = String(n);
+    countInOverlay.classList.remove('hidden');
+    countInOverlay.setAttribute('aria-hidden', 'false');
+  }
+
+  function openHelp() {
+    if (!helpOverlay) return;
+    if (helpBody && !helpBody.dataset.ready) {
+      helpBody.innerHTML = helpBodyHtml();
+      helpBody.dataset.ready = '1';
+    }
+    helpOverlay.classList.remove('hidden');
+    document.body.classList.add('help-open');
+    helpClose?.focus();
+  }
+
+  function closeHelp() {
+    if (!helpOverlay) return;
+    helpOverlay.classList.add('hidden');
+    document.body.classList.remove('help-open');
+    helpBtn?.focus();
   }
 
   function setFinish(mode) {
@@ -520,7 +587,8 @@ export function mountApp(root, engine) {
 
   function updateWaveformLoop(now = performance.now()) {
     waveformRaf = 0;
-    if (!engine.playing && !engine.recording) {
+    updateCountInOverlay();
+    if (!engine.playing && !engine.recording && !engine.countingIn) {
       redrawAllWaveforms(-1);
       return;
     }
@@ -643,11 +711,16 @@ export function mountApp(root, engine) {
     const isPlaying = engine.playing && !engine.recording;
     labelPlay.textContent = isPlaying ? 'PLAYING' : 'PLAY';
     btnPlay.classList.toggle('active', isPlaying);
-    labelRec.textContent = engine.recording ? 'STOP REC' : 'RECORD TAKE';
-    btnRec.classList.toggle('recording', engine.recording);
-    btnRec.setAttribute('aria-pressed', engine.recording ? 'true' : 'false');
+    if (engine.countingIn) {
+      labelRec.textContent = 'CANCEL';
+    } else {
+      labelRec.textContent = engine.recording ? 'STOP REC' : 'RECORD TAKE';
+    }
+    btnRec.classList.toggle('recording', engine.recording || engine.countingIn);
+    btnRec.setAttribute('aria-pressed', engine.recording || engine.countingIn ? 'true' : 'false');
+    updateCountInOverlay();
 
-    if ((engine.playing || engine.recording) && !waveformRaf) {
+    if ((engine.playing || engine.recording || engine.countingIn) && !waveformRaf) {
       waveformLast = 0;
       waveformRaf = requestAnimationFrame(updateWaveformLoop);
     }
@@ -749,6 +822,36 @@ export function mountApp(root, engine) {
 
   if (liteBtn) liteBtn.addEventListener('click', () => setLite(!liteMode));
   applyLite();
+  syncCountInToggle();
+  if (countInEl) {
+    countInEl.addEventListener('change', () => setCountIn(countInEl.checked));
+  }
+  if (helpBody) {
+    helpBody.innerHTML = helpBodyHtml();
+    helpBody.dataset.ready = '1';
+  }
+  if (helpBtn) helpBtn.addEventListener('click', () => {
+    if (helpOverlay && !helpOverlay.classList.contains('hidden')) closeHelp();
+    else openHelp();
+  });
+  if (helpClose) helpClose.addEventListener('click', () => closeHelp());
+  if (helpOverlay) {
+    helpOverlay.addEventListener('click', (e) => {
+      if (e.target === helpOverlay) closeHelp();
+    });
+  }
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape' && helpOverlay && !helpOverlay.classList.contains('hidden')) {
+      closeHelp();
+    }
+  });
+  engine.onCountIn = () => {
+    updateCountInOverlay();
+    syncTransportButtons();
+    if ((engine.playing || engine.recording || engine.countingIn) && !waveformRaf) {
+      waveformRaf = requestAnimationFrame(updateWaveformLoop);
+    }
+  };
 
   if (micCheckBtn) {
     micCheckBtn.addEventListener('click', async () => {

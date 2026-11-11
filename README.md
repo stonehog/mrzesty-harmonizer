@@ -6,6 +6,8 @@ Offline-first Music Memos–style vocal sketchpad and hardware-inspired studio c
 
 Repo: https://github.com/stonehog/mrzesty-harmonizer
 
+New to the app? Start with the plain-language [How to use MrZesty](HOW-TO-USE.md) guide, or tap **Help** in the top bar. The same walkthrough is also in the app.
+
 ## Run it on a Mac (or Windows / Linux)
 
 You need [Node.js](https://nodejs.org) 18+ and git.
@@ -17,7 +19,7 @@ npm install
 npm start          # = npm run build && npm run preview → http://localhost:4173
 ```
 
-Open **http://localhost:4173** in Chrome, Brave, Edge or Safari, tap **ENABLE AUDIO** (this also loads the samples), then allow the microphone when you record a take.
+Open **http://localhost:4173** in Chrome, Brave, Edge or Safari, tap **ENABLE AUDIO** (this also loads the samples), then allow the microphone when you record a take. The live site is at https://stonehog.github.io/mrzesty-harmonizer/ (HTTPS, so the microphone is allowed).
 
 **Use the production build (`npm start`) for playing and recording.** It serves the optimized `dist/` bundle with no file watcher or hot-reload socket, which matters if the folder lives in iCloud Drive (the dev server watches every file there). `npm run dev` (http://localhost:5173) is for editing the code.
 
@@ -56,6 +58,7 @@ Conference-headset and laptop mics often come in very quiet (browser auto-gain i
 
 - **MIC GAIN** (0 to +24 dB, default **+9 dB**) applied before the take is written, with a live **INPUT** meter and a **CLIP** warning. A soft limiter sits after the gain so a hot take does not hard-clip.
 - **MIC CHECK** opens the mic so you can watch the INPUT meter while you set MIC GAIN. Turn it off when you are done. Otherwise the mic is open only while a take is recording: a Bluetooth headset (AirPods included) drops into low-quality "call" audio whenever its mic is open, which makes playback thin and choppy. Wired headphones plus the Mac mic or an audio interface sound best.
+- **COUNT-IN** (on by default, saved in this browser) plays one bar of quiet 4-3-2-1 metronome clicks, scheduled on the audio clock, then starts the take on the next downbeat. If the loop is already playing, the count-in is the last bar before the loop starts over. The clicks are short and quiet so they are less likely to leak into the take if you are on speakers; headphones are still best. Turn COUNT-IN off to start recording right away. Mic Check still works during the count-in.
 - Takes are lined up with the loop automatically: the recorder drops the scheduled pre-roll and the output latency the browser reports, so vocals land on the beat instead of slightly late.
 - **AUTO-LEVEL** (on by default) peak-normalizes each finished take to about **−3 dBFS** before the harmonizer and doubler analyze it, so doubles and harmonies get the same louder signal.
 - Each vox lane already has a **LVL** playback trim (saved with the idea and used by the WAV bounce). MIC GAIN and AUTO-LEVEL are also saved with ideas; they only affect new takes, not audio already on the lanes.
@@ -84,7 +87,7 @@ Cumbia and Shroom Lounge were removed in v0.4.0 (old saved ideas that used them 
 
 ## Performance
 
-v0.4.3 was a performance pass after playback got choppy on an Intel iMac. Measured with a Chrome DevTools trace (3 vox lanes of 11.4 s, Trip-Hop on **Busy**, Double + Triad harmony on All Vox), share of time the browser's main thread was busy:
+v0.4.4 adds a 1-bar record count-in and an in-app Help walkthrough. v0.4.3 was a performance pass after playback got choppy on an Intel iMac. Measured with a Chrome DevTools trace (3 vox lanes of 11.4 s, Trip-Hop on **Busy**, Double + Triad harmony on All Vox), share of time the browser's main thread was busy:
 
 | | v0.4.2 | v0.4.3 | v0.4.3 Lite |
 |---|---|---|---|

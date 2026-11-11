@@ -27,9 +27,15 @@ import {
   getChopPattern,
   getStyleProfile,
   scheduleStepHits,
+  triggerClick,
   STEPS_PER_BAR,
   BEATS_PER_BAR,
 } from './kits.js';
+import {
+  countInPlan,
+  countInNumberAt,
+  takeAlignOffsetSamples,
+} from './countIn.js';
 import { loadSampleBank, samplesReady, setFxReturn, setFxEnabled, setFxLaneLevel } from './sampler.js';
 import { bounceMix } from './mixdown.js';
 import { HarmonizerModule } from '../modules/harmonizer.js';
@@ -63,6 +69,15 @@ export class SketchpadEngine {
     this.playing = false;
     this.recording = false;
     this.armedIndex = 0;
+    /** 1 = one bar of clicks before a take; 0 = start right away. Default on. */
+    this.countInBars = 1;
+    this.countingIn = false;
+    this.countInNumber = 0;
+    /** Audio-clock time the take should line up with (record downbeat). */
+    this._recAlignTime = 0;
+    this._countInBeats = null;
+    this._countInNodes = [];
+    this._wasPlayingBeforeRecord = false;
 
     this.tracks = Array.from({ length: TRACK_COUNT }, (_, i) => new VocalTrack('Vox ' + (i + 1)));
     this.tracks[0].armed = true;
@@ -152,6 +167,8 @@ export class SketchpadEngine {
     this.onPitch = null;
     /** @type {((step: number, bar: number, beat: number) => void) | null} */
     this.onBeat = null;
+    /** @type {((n: number) => void) | null} */
+    this.onCountIn = null;
     /** @type {(() => void) | null} */
     this.onState = null;
     /** @type {((msg: string) => void) | null} */
@@ -317,7 +334,7 @@ export class SketchpadEngine {
 
   /** True while the input meter has something to show. */
   get micMeterActive() {
-    return !!(this.micAnalyser && (this.micMonitor || this.recording));
+    return !!(this.micAnalyser && (this.micMonitor || this.recording || this.countingIn));
   }
 
   /**
@@ -395,7 +412,7 @@ export class SketchpadEngine {
   }
 
   releaseMicIfIdle() {
-    if (this.recording || this.micMonitor) return;
+    if (this.recording || this.micMonitor || this.countingIn) return;
     this.stream?.getTracks().forEach((t) => t.stop());
     this.stream = null;
     this._disconnectMicMeter();
@@ -730,13 +747,17 @@ export class SketchpadEngine {
     }
   }
 
-  async play() {
+  async play(opts = {}) {
     await this.init();
     if (this.playing) return;
     this.playing = true;
     this._currentStep = 0;
-    this._nextNoteTime = this.ctx.currentTime + 0.05;
-    this._playStart = this._nextNoteTime;
+    const startAt =
+      typeof opts.at === 'number' && Number.isFinite(opts.at)
+        ? opts.at
+        : this.ctx.currentTime + 0.05;
+    this._nextNoteTime = startAt;
+    this._playStart = startAt;
     this._startTrackPlayback(this._playStart);
 
     if (!this.autoLoop && !this.recording) {
@@ -751,7 +772,7 @@ export class SketchpadEngine {
   }
 
   stop() {
-    if (this.recording) this._finishRecord(false);
+    if (this.countingIn || this.recording) this._abortOrFinish(false);
     this._haltTransport();
     this._status('Stopped');
     this._emitState();
@@ -774,8 +795,32 @@ export class SketchpadEngine {
     else await this.play();
   }
 
+  setCountIn(on) {
+    this.countInBars = on ? 1 : 0;
+    this._emitState();
+  }
+
+  /**
+   * Current 4-3-2-1 count-in number at the audio clock, or 0 if none.
+   * The UI should poll this from rAF (not a wall-clock timer).
+   */
+  countInDisplay(now) {
+    if (!this.countingIn || !this._countInBeats) return 0;
+    const t = Number.isFinite(now) ? now : this.ctx ? this.ctx.currentTime : 0;
+    return countInNumberAt(this._countInBeats, this._recAlignTime, t);
+  }
+
   async record() {
     await this.init();
+    if (this.countingIn) {
+      const keepPlaying = this._wasPlayingBeforeRecord && this.playing;
+      this._abortRecord();
+      if (!keepPlaying) this._haltTransport();
+      this._status('Recording canceled');
+      this._emitState();
+      this.onCountIn?.(0);
+      return;
+    }
     if (this.recording) {
       this._finishRecord(false);
       return;
@@ -788,43 +833,169 @@ export class SketchpadEngine {
       throw err;
     }
 
-    if (this.playing) this.stop();
+    this._wasPlayingBeforeRecord = !!this.playing;
 
+    if (this.countInBars > 0) {
+      await this._startRecordWithCountIn();
+      return;
+    }
+
+    if (this.playing) this.stop();
+    this._wasPlayingBeforeRecord = false;
+    this._beginDryCapture(this.ctx.currentTime);
+    await this.play();
+    this._recAlignTime = this._playStart;
+    this.captureMode = this.capture?.mode || 'none';
+    this._status(this._recordingStatus());
+    this._emitState();
+  }
+
+  _recordingStatus() {
+    const name = this.tracks[this.armedIndex].name;
+    return this.autoLoop
+      ? 'Recording dry ' + name + ' · one loop frame'
+      : 'Recording dry ' + name + ' · phrase (tap Rec to stop)';
+  }
+
+  async _startRecordWithCountIn() {
+    const now = this.ctx.currentTime;
+    const plan = countInPlan({
+      now,
+      bpm: this.bpm,
+      bars: this.bars,
+      playing: this.playing,
+      playStart: this._playStart,
+      autoLoop: this.autoLoop,
+    });
+    this.countingIn = true;
+    this.countInNumber = 4;
+    this._countInBeats = plan.beats;
+    this._recAlignTime = plan.recordStart;
+    this._scheduleCountInClicks(plan.beats);
+    // Capture starts immediately; the count-in and output latency are trimmed later
+    // so the take stays beat-aligned. Clicks are not in the capture graph, only
+    // the speakers, and they are short and quiet to limit bleed.
+    this._beginDryCapture(plan.recordStart);
+    if (!this.playing) {
+      await this.play({ at: plan.recordStart });
+    }
+    this.captureMode = this.capture?.mode || 'none';
+    this._status(
+      'Count-in · 4-3-2-1 · start singing on the next downbeat · headphones keep the clicks out of the take'
+    );
+    this.onCountIn?.(this.countInDisplay());
+    this._emitState();
+  }
+
+  /**
+   * Open the dry mic tap. `alignTime` is the musical downbeat the take should
+   * line up with; the capture buffer is long enough to include any pre-roll.
+   */
+  _beginDryCapture(alignTime) {
     const maxSec = this.autoLoop ? this.loopSeconds() : PHRASE_MAX_SEC;
+    const now = this.ctx.currentTime;
+    const preRoll = Math.max(0, alignTime - now);
     // Dry mic tap only — never the mix bus / harmony / kits.
     // Gain + soft limiter run on each chunk so the live waveform matches the take.
     this.capture = new MicCapture(this.ctx, this.micSource, { useWorklet: this._useWorklet });
     this.capture.process = (input) => applyMicGainAndLimit(input, this.micGainDb);
     this.recording = true;
-    this._recStartTime = this.ctx.currentTime + 0.05;
-
-    // Keep post-recording harmony muted while capturing a dry vocal take
+    this._recStartTime = alignTime;
     this.harmonizer?.setDriveEnabled(false);
-
-    this._captureStartCtx = this.ctx.currentTime;
-    // Extra tail so the frame is still full after pre-roll / latency compensation
-    // (only as long as this device needs, so the take ends right after the loop frame).
-    const latTail = Math.min(MAX_LATENCY_COMP, Number(this.ctx.outputLatency) || Number(this.ctx.baseLatency) || 0);
-    this.capture.start(maxSec + 0.15 + 0.06 + latTail, () => {
+    this._captureStartCtx = now;
+    const latTail = Math.min(
+      MAX_LATENCY_COMP,
+      Number(this.ctx.outputLatency) || Number(this.ctx.baseLatency) || 0,
+    );
+    this.capture.start(preRoll + maxSec + 0.15 + 0.06 + latTail, () => {
       if (this.recording) this._finishRecord(true);
     });
-
-    await this.play();
-    this.captureMode = this.capture?.mode || 'none';
-    this._status(
-      this.autoLoop
-        ? 'Recording dry ' + this.tracks[this.armedIndex].name + ' · one loop frame'
-        : 'Recording dry ' + this.tracks[this.armedIndex].name + ' · phrase (tap Rec to stop)'
-    );
-    this._emitState();
   }
+
+  _scheduleCountInClicks(beats) {
+    this._cancelCountInClicks();
+    if (!this.ctx || !this.metroGain) return;
+    for (const b of beats) {
+      if (b.time < this.ctx.currentTime - 0.01) continue;
+      const accent = b.number === 4;
+      // Short and quiet so speaker bleed into the mic is less likely.
+      const node = triggerClick(this.ctx, this.metroGain, b.time, accent, {
+        gain: accent ? 0.1 : 0.055,
+        duration: 0.02,
+      });
+      if (node) this._countInNodes.push(node);
+    }
+  }
+
+  _cancelCountInClicks() {
+    for (const n of this._countInNodes) {
+      try {
+        n.gain.gain.cancelScheduledValues(this.ctx.currentTime);
+        n.gain.gain.setValueAtTime(0, this.ctx.currentTime);
+        n.osc.stop(this.ctx.currentTime);
+      } catch {
+        /* already finished */
+      }
+    }
+    this._countInNodes = [];
+  }
+
+  _clearCountIn() {
+    this._cancelCountInClicks();
+    this.countingIn = false;
+    this.countInNumber = 0;
+    this._countInBeats = null;
+    this.onCountIn?.(0);
+  }
+
+  /** Stop a take or a count-in without keeping the audio. */
+  _abortRecord() {
+    this._clearCountIn();
+    if (this.capture) {
+      try {
+        this.capture.stop(0, 0);
+      } catch {
+        /* */
+      }
+    }
+    this.recording = false;
+    this.capture = null;
+    this._recAlignTime = 0;
+    this.harmonizer?.setDriveEnabled(true);
+    this.releaseMicIfIdle();
+  }
+
+  _abortOrFinish(autoStopped) {
+    if (this.countingIn && !autoStopped) {
+      this._abortRecord();
+      return;
+    }
+    this._finishRecord(autoStopped);
+  }
+
+  _updateCountInClock() {
+    if (!this.countingIn || !this.ctx) return;
+    const n = this.countInDisplay();
+    if (n !== this.countInNumber) {
+      this.countInNumber = n;
+      this.onCountIn?.(n);
+    }
+    if (this.ctx.currentTime >= this._recAlignTime) {
+      this._clearCountIn();
+      this._status(this._recordingStatus());
+      this._emitState();
+    }
+  }
+
 
   _finishRecord(autoStopped) {
     if (!this.recording || !this.capture) return;
+    this._clearCountIn();
     const trim = this.autoLoop ? Math.floor(this.loopSeconds() * this.ctx.sampleRate) : 0;
     const result = this.capture.stop(trim, this._takeOffsetSamples(this.capture));
     this.recording = false;
     this.capture = null;
+    this._recAlignTime = 0;
 
     this.harmonizer?.setDriveEnabled(true);
 
@@ -868,13 +1039,16 @@ export class SketchpadEngine {
    */
   _takeOffsetSamples(capture) {
     const sr = this.ctx.sampleRate;
+    const align = this._recAlignTime || this._playStart;
     const startSec =
-      capture.startFrame >= 0 ? capture.startFrame / sr : this._captureStartCtx || this._playStart;
-    const preRoll = Math.max(0, this._playStart - startSec);
-    let lat = Number(this.ctx.outputLatency) || Number(this.ctx.baseLatency) || 0;
-    if (!Number.isFinite(lat) || lat < 0) lat = 0;
-    lat = Math.min(MAX_LATENCY_COMP, lat);
-    return Math.round((preRoll + lat) * sr);
+      capture.startFrame >= 0 ? capture.startFrame / sr : this._captureStartCtx || align;
+    return takeAlignOffsetSamples({
+      sampleRate: sr,
+      captureStartSec: startSec,
+      recordStartSec: align,
+      outputLatencySec: Number(this.ctx.outputLatency) || Number(this.ctx.baseLatency) || 0,
+      maxLatencySec: MAX_LATENCY_COMP,
+    });
   }
 
   _startTrackPlayback(when) {
@@ -940,6 +1114,7 @@ export class SketchpadEngine {
 
   _scheduler() {
     if (!this.playing || !this.ctx) return;
+    this._updateCountInClock();
 
     if (
       !this.autoLoop &&
