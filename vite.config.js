@@ -2,10 +2,9 @@ import { defineConfig } from 'vite';
 
 export default defineConfig({
   root: '.',
-  // Local dev / `npm start` keep a relative base so the build works at the
-  // site root. GitHub Pages is served from /mrzesty-harmonizer/, so the
-  // deploy script sets GITHUB_PAGES=true for that build.
-  base: process.env.GITHUB_PAGES === 'true' ? '/mrzesty-harmonizer/' : './',
+  // Local dev / `npm start` keep a relative base. The GitHub Pages deploy is
+  // served at the root of the custom domain https://mrzesty.com, so it uses '/'.
+  base: process.env.GITHUB_PAGES === 'true' ? '/' : './',
   publicDir: 'public',
   build: {
     outDir: 'dist',

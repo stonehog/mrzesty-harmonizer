@@ -19,7 +19,7 @@ npm install
 npm start          # = npm run build && npm run preview → http://localhost:4173
 ```
 
-Open **http://localhost:4173** in Chrome, Brave, Edge or Safari, tap **ENABLE AUDIO** (this also loads the samples), then allow the microphone when you record a take. The live site is at https://stonehog.github.io/mrzesty-harmonizer/ (HTTPS, so the microphone is allowed).
+Open **http://localhost:4173** in Chrome, Brave, Edge or Safari, tap **ENABLE AUDIO** (this also loads the samples), then allow the microphone when you record a take. The live site is at https://mrzesty.com/ (HTTPS, so the microphone is allowed).
 
 **Use the production build (`npm start`) for playing and recording.** It serves the optimized `dist/` bundle with no file watcher or hot-reload socket, which matters if the folder lives in iCloud Drive (the dev server watches every file there). `npm run dev` (http://localhost:5173) is for editing the code.
 
@@ -121,7 +121,7 @@ The **bundled audio samples** in `src/assets/samples/` keep their own licenses (
 
 ## Live demo
 
-https://stonehog.github.io/mrzesty-harmonizer/
+https://mrzesty.com/
 
 Hosted on GitHub Pages over HTTPS (required for the microphone).
 

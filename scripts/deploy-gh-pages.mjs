@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Rebuild dist/ with the GitHub Pages base path and force-push it to the
+ * Rebuild dist/ for the custom domain mrzesty.com (writes CNAME) and force-push it to the
  * orphan gh-pages branch (single commit). Requires git push access to origin.
  */
 import { execFileSync } from 'node:child_process';
@@ -25,6 +25,7 @@ const work = mkdtempSync(join(tmpdir(), 'mrzesty-pages-'));
 try {
   cpSync(join(root, 'dist'), work, { recursive: true });
   writeFileSync(join(work, '.nojekyll'), '');
+  writeFileSync(join(work, 'CNAME'), 'mrzesty.com\n');
   run('git', ['init'], work);
   run('git', ['checkout', '-B', 'gh-pages'], work);
   run('git', ['config', 'user.name', 'Smedley'], work);
