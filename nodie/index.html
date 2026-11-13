@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="robots" content="noindex, nofollow" />
+<title>Nodie · Your rifle's sweet-spot speed</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🐾</text></svg>" />
+<style>
+  :root {
+    --bg: #0b0b0c; --card: #161618; --card2: #1d1d20; --line: #2a2a2e;
+    --ink: #f4f4f5; --muted: #a1a1aa; --accent: #7aa2ff; --accent-ink: #0b0b0c;
+    --good: #4ade80; --warn: #fbbf24; --bad: #f87171;
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 18px/1.55 -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  .wrap { max-width: 860px; margin: 0 auto; padding: 40px 20px 80px; }
+  h1 { font-size: 34px; line-height: 1.2; margin: 0 0 8px; letter-spacing: -0.5px; }
+  .brand { display: flex; align-items: center; gap: 12px; font-size: 40px; }
+  .paw { width: 38px; height: 38px; color: var(--accent); flex: none; }
+  .tagline { font-size: 21px; font-weight: 600; margin: 0 0 10px; }
+  .lead { color: var(--muted); margin: 0 0 32px; font-size: 19px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 20px; padding: 26px; margin-bottom: 20px; }
+  .step { display: flex; align-items: center; gap: 12px; margin: 0 0 18px; font-size: 21px; font-weight: 650; }
+  .num { width: 34px; height: 34px; border-radius: 50%; background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; font-size: 17px; font-weight: 800; flex: none; }
+  label { display: block; font-weight: 600; margin: 16px 0 6px; }
+  .help { display: block; color: var(--muted); font-size: 15px; font-weight: 400; margin-top: 2px; }
+  input[type=text], input[type=number], select, textarea {
+    width: 100%; font: inherit; color: var(--ink); background: var(--card2); border: 1px solid #3a3a40; border-radius: 12px; padding: 13px 14px; outline: none; }
+  input:focus, select:focus, textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(122,162,255,.25); }
+  .row { display: grid; grid-template-columns: 1fr 1fr; gap: 0 16px; }
+  .row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0 16px; }
+  .drop { display: block; border: 2px dashed #3f3f46; border-radius: 16px; padding: 34px 20px; text-align: center; cursor: pointer; transition: .15s; background: var(--card2); margin: 0; font-weight: 400; }
+  .drop:hover, .drop.over { border-color: var(--accent); background: #1a1f2c; }
+  .drop .big { font-size: 20px; font-weight: 650; }
+  .drop .fname { color: var(--accent); margin-top: 8px; font-weight: 600; }
+  .drop input { display: none; }
+  .seg { display: flex; background: var(--card2); border: 1px solid #3a3a40; border-radius: 12px; padding: 4px; gap: 4px; }
+  .seg label { flex: 1; margin: 0; text-align: center; padding: 10px; border-radius: 9px; cursor: pointer; font-weight: 600; color: var(--muted); }
+  .seg input { display: none; }
+  .seg label:has(input:checked) { background: var(--accent); color: var(--accent-ink); }
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+  .chip { font: inherit; font-size: 15px; background: transparent; color: var(--muted); border: 1px solid #3a3a40; border-radius: 999px; padding: 6px 13px; cursor: pointer; }
+  .chip:hover { color: var(--ink); border-color: var(--accent); }
+  details.more { margin-top: 22px; border-top: 1px solid var(--line); padding-top: 16px; }
+  details > summary { cursor: pointer; font-weight: 600; color: var(--accent); list-style: none; padding: 6px 0; }
+  details > summary::-webkit-details-marker { display: none; }
+  details > summary::before { content: "＋ "; }
+  details[open] > summary::before { content: "－ "; }
+  .sub { color: var(--muted); font-size: 15px; margin-top: 18px; font-weight: 600; text-transform: uppercase; letter-spacing: .6px; }
+  .go { display: block; width: 100%; font: inherit; font-size: 20px; font-weight: 700; padding: 18px; border: 0; border-radius: 16px; background: var(--accent); color: var(--accent-ink); cursor: pointer; margin: 8px 0 12px; }
+  .go:hover { filter: brightness(1.08); }
+  .go:disabled { opacity: .6; cursor: wait; }
+  .samples { text-align: center; color: var(--muted); font-size: 15px; }
+  .samples button { font: inherit; background: none; border: 0; color: var(--accent); cursor: pointer; padding: 2px 4px; text-decoration: underline; }
+  .err { display: none; background: #2a1414; border: 1px solid #7f1d1d; color: #fecaca; border-radius: 14px; padding: 14px 18px; margin: 12px 0; }
+  #results { display: none; margin-top: 44px; }
+  .rtitle { font-size: 28px; margin: 0 0 4px; }
+  .rsub { color: var(--muted); margin: 0 0 20px; font-size: 16px; }
+  .picks { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+  .pick { background: var(--card); border: 1px solid var(--line); border-radius: 20px; padding: 24px; }
+  .pick .kind { font-size: 15px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .7px; }
+  .pick .speed { font-size: 52px; font-weight: 750; line-height: 1.05; margin: 10px 0 2px; letter-spacing: -1px; }
+  .pick .speed small { font-size: 20px; color: var(--muted); font-weight: 500; letter-spacing: 0; }
+  .pick .at { color: var(--muted); font-size: 15px; }
+  .pick .line { margin-top: 14px; font-size: 16px; }
+  .pick .charge { margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--line); font-size: 16px; }
+  .pill { display: inline-flex; align-items: center; gap: 7px; padding: 5px 12px; border-radius: 999px; font-size: 15px; font-weight: 650; margin-top: 12px; }
+  .pill::before { content: ""; width: 9px; height: 9px; border-radius: 50%; background: currentColor; }
+  .pill.good { color: var(--good); background: rgba(74,222,128,.1); }
+  .pill.warn { color: var(--warn); background: rgba(251,191,36,.1); }
+  .pill.bad { color: var(--bad); background: rgba(248,113,113,.1); }
+  .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 20px; }
+  .stat { background: var(--card); border: 1px solid var(--line); border-radius: 16px; padding: 14px 16px; }
+  .stat .l { color: var(--muted); font-size: 14px; }
+  .stat .v { font-size: 22px; font-weight: 700; }
+  .badge { display: inline-block; font-size: 14px; padding: 4px 12px; border-radius: 999px; background: rgba(122,162,255,.14); color: var(--accent); font-weight: 600; }
+  h3 { font-size: 21px; margin: 0 0 6px; }
+  .note { color: var(--muted); font-size: 15px; margin: 0 0 14px; }
+  .bars { display: flex; flex-direction: column; gap: 8px; }
+  .bar { display: grid; grid-template-columns: 110px 1fr 92px; align-items: center; gap: 12px; font-size: 16px; }
+  .bar .track { height: 26px; background: var(--card2); border-radius: 8px; position: relative; overflow: hidden; }
+  .bar .fill { height: 100%; border-radius: 8px; }
+  .bar .fps { text-align: right; font-variant-numeric: tabular-nums; font-weight: 600; }
+  .bar.off { opacity: .45; }
+  .bar.off .name { text-decoration: line-through; }
+  .bar .tag { position: absolute; left: 10px; top: 2px; font-size: 13px; font-weight: 700; color: #0b0b0c; }
+  .legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 14px; color: var(--muted); margin-top: 12px; }
+  .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; }
+  .tbl { width: 100%; border-collapse: collapse; font-size: 16px; }
+  .tbl th { text-align: left; color: var(--muted); font-weight: 600; font-size: 14px; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+  .tbl td { padding: 10px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .scroll { overflow-x: auto; }
+  .actions { display: flex; gap: 10px; flex-wrap: wrap; margin: 6px 0 20px; }
+  .btn2 { font: inherit; font-size: 16px; padding: 10px 16px; border-radius: 12px; border: 1px solid #3a3a40; background: var(--card); color: var(--ink); cursor: pointer; }
+  .btn2:hover { border-color: var(--accent); }
+  .warnings { border-color: #3b3320; }
+  .warnings h3 { margin-bottom: 14px; }
+  .wlist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+  .wlist li { padding: 12px 14px; border-radius: 12px; background: var(--card2); font-size: 16px; border-left: 4px solid var(--muted); }
+  .wlist li.bad { border-left-color: var(--bad); }
+  .wlist li.warn { border-left-color: var(--warn); }
+  .wlist li.info { border-left-color: var(--accent); }
+  .wlist b { display: block; margin-bottom: 2px; }
+  .disclaimer { margin-top: 16px; padding: 16px; border-radius: 12px; background: #1f1a10; color: #fde68a; font-size: 16px; }
+  .tip { border-bottom: 1px dotted var(--muted); cursor: help; }
+  .muted { color: var(--muted); }
+  @media (max-width: 640px) {
+    .wrap { padding: 26px 16px 60px; }
+    h1 { font-size: 28px; }
+    .card { padding: 20px; border-radius: 18px; }
+    .row, .row3, .picks { grid-template-columns: 1fr; }
+    .stats { grid-template-columns: 1fr 1fr; }
+    .pick .speed { font-size: 46px; }
+    .bar { grid-template-columns: 82px 1fr 74px; font-size: 15px; }
+  }
+  @media print {
+    body { background: #fff; color: #000; font-size: 13px; }
+    .card, .pick, .stat { background: #fff; border: 1px solid #999; }
+    #form, .actions, .samples { display: none !important; }
+    .muted, .note, .pick .at, .stat .l { color: #333; }
+  }
+  .legal { margin-top: 48px; color: var(--muted); font-size: 13px; text-align: center; }
+  .legal a { color: var(--muted); }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1 class="brand"><svg class="paw" viewBox="0 0 64 64" aria-hidden="true"><g fill="currentColor"><ellipse cx="32" cy="43" rx="14" ry="12"/><ellipse cx="14" cy="27" rx="6" ry="8" transform="rotate(-20 14 27)"/><ellipse cx="25" cy="15" rx="6" ry="8.5"/><ellipse cx="39" cy="15" rx="6" ry="8.5"/><ellipse cx="50" cy="27" rx="6" ry="8" transform="rotate(20 50 27)"/></g></svg>Nodie</h1>
+  <p class="tagline">Nodie sniffs out your rifle's sweet-spot speed.</p>
+  <p class="lead">Drop in your chronograph file, tell us the basics, and Nodie will show two speeds to aim for: an easy everyday load and a stronger hunting load.</p>
+
+  <form id="form" onsubmit="submitForm(event)">
+    <input type="hidden" id="sample_preset" name="sample_preset" value="" />
+
+    <div class="card">
+      <div class="step"><span class="num">1</span>Add your chronograph file</div>
+      <label class="drop" id="drop" for="chrono_file">
+        <div class="big">Drop your file here, or tap to choose</div>
+        <div class="muted" style="font-size:15px">Garmin Xero <b>.fit</b> or a chronograph <b>.csv</b></div>
+        <div class="fname" id="fname"></div>
+        <input type="file" id="chrono_file" name="chrono_file" accept=".fit,.csv,.txt" />
+      </label>
+    </div>
+
+    <div class="card">
+      <div class="step"><span class="num">2</span>The basics</div>
+      <div class="row">
+        <div>
+          <label for="cartridge">Cartridge</label>
+          <select id="cartridge" name="cartridge" onchange="onCartridgeChange()"></select>
+        </div>
+        <div>
+          <label for="bullet_weight_gr">Bullet weight (grains)</label>
+          <input type="number" id="bullet_weight_gr" name="bullet_weight_gr" step="0.5" min="20" max="400" required />
+        </div>
+      </div>
+      <div class="chips" id="bulletPills"></div>
+
+      <label>What did you shoot?</label>
+      <div class="seg">
+        <label><input type="radio" name="ammo_type" value="factory" checked onchange="toggleAmmoMode()" />Factory ammo</label>
+        <label><input type="radio" name="ammo_type" value="handload" onchange="toggleAmmoMode()" />My handloads</label>
+      </div>
+
+      <div id="factoryFields">
+        <label for="factory_label">Ammo brand / box name <span class="help">Optional — just for your records.</span></label>
+        <input type="text" id="factory_label" name="factory_label" placeholder="e.g. Hornady Outfitter 160 gr CX" />
+      </div>
+
+      <div id="handloadFields" style="display:none">
+        <label for="powder_name">Powder</label>
+        <input type="text" id="powder_name" name="powder_name" placeholder="e.g. Vihtavuori N150" />
+        <label for="charges_text">Powder charges, in the order you shot them
+          <span class="help">One per shot, separated by commas. Or fill in start + step below for a ladder (each shot a little more powder).</span></label>
+        <input type="text" id="charges_text" name="charges_text" placeholder="e.g. 38.0, 38.2, 38.4, 38.6" />
+        <div class="row">
+          <div><label for="start_charge_gr">Ladder start (gr)</label><input type="number" id="start_charge_gr" name="start_charge_gr" step="0.1" placeholder="38.0" /></div>
+          <div><label for="step_charge_gr">Step each shot (gr)</label><input type="number" id="step_charge_gr" name="step_charge_gr" step="0.05" placeholder="0.2" /></div>
+        </div>
+      </div>
+
+      <label for="where_when">Where &amp; when you shot <span class="help">Optional. We look up the air temperature for you (free weather records).</span></label>
+      <input type="text" id="where_when" name="where_when" placeholder="2pm in Langley, WA on 10/1/2026" />
+      <div id="wxResult" class="help" style="margin-top:6px"></div>
+
+      <details class="more" id="moreDetails">
+        <summary>More details (optional, makes results more accurate)</summary>
+
+        <div class="sub">Rifle</div>
+        <div class="row">
+          <div>
+            <label for="barrel_length_in">Barrel length (inches) <span class="help">Muzzle to bolt face.</span></label>
+            <input type="number" id="barrel_length_in" name="barrel_length_in" step="0.25" min="6" max="36" value="24" />
+          </div>
+          <div>
+            <label for="barrel_contour">Barrel thickness <span class="help">Thicker barrels vibrate a bit differently.</span></label>
+            <select id="barrel_contour" name="barrel_contour"><option value="">Not sure (medium)</option><option value="light">Light hunting barrel</option><option value="medium">Medium / sporter</option><option value="heavy">Heavy varmint / bull</option></select>
+          </div>
+        </div>
+
+        <div class="sub">Weather</div>
+        <div class="row">
+          <div><label for="session_temp_f">Temperature when you shot (°F) <span class="help">Overrides the weather lookup.</span></label><input type="number" id="session_temp_f" name="session_temp_f" step="1" /></div>
+          <div><label for="shoot_temp_f">Temperature you'll hunt/shoot in (°F) <span class="help">Powder runs faster when warm. Blank = same day.</span></label><input type="number" id="shoot_temp_f" name="shoot_temp_f" step="1" /></div>
+        </div>
+        <label for="temp_coef_fps_per_f">Powder temperature change (fps per °F) <span class="help">From the powder maker if known. We assume 1.5 if blank.</span></label>
+        <input type="number" id="temp_coef_fps_per_f" name="temp_coef_fps_per_f" step="0.1" />
+
+        <div class="sub">Brass &amp; cartridge</div>
+        <div class="row">
+          <div><label for="case_h2o_override_gr">Fired case water capacity (gr of water) <span class="help">Fill a fired case with water and weigh it. Sharpens the pressure guess.</span></label><input type="number" id="case_h2o_override_gr" name="case_h2o_override_gr" step="0.01" /></div>
+          <div><label for="coal_in">Overall cartridge length, COAL (inches) <span class="help">Base to bullet tip of a loaded round.</span></label><input type="number" id="coal_in" name="coal_in" step="0.001" /></div>
+        </div>
+
+        <div class="sub">Pressure limits</div>
+        <div class="row3">
+          <div><label for="max_psi">Max pressure (PSI) <span class="help">Blank = industry max.</span></label><input type="number" id="max_psi" name="max_psi" step="500" /></div>
+          <div><label>Everyday range (% of max)</label><div class="row" style="gap:0 8px"><input type="number" name="daily_lo_pct" placeholder="85" /><input type="number" name="daily_hi_pct" placeholder="90" /></div></div>
+          <div><label for="hunting_max_pct">Hunting cap (% of max)</label><input type="number" id="hunting_max_pct" name="hunting_max_pct" placeholder="95" /></div>
+        </div>
+
+        <div class="sub">Several ladders in one file</div>
+        <p class="note" style="margin-top:6px">Only if you took turns between different bullets in one session (round-robin).</p>
+        <label for="multi_ladders">One ladder per line <span class="help">name, bullet gr, start charge, step, shots — optionally slowest &amp; fastest speed seen</span></label>
+        <textarea id="multi_ladders" name="multi_ladders" rows="4" placeholder="140 MK, 140, 38.0, 0.2, 12&#10;144 MK, 144, 37.2, 0.2, 12, 2670.1, 2776.5"></textarea>
+        <div class="row">
+          <div><label for="multi_order">Order each round</label><select id="multi_order" name="multi_order"><option value="serpentine">Forward or reversed (auto)</option><option value="fixed">Always the same order</option><option value="any">Any order (auto)</option></select></div>
+          <div><label for="sighter_fps">Warm-up / sighter shots to skip <span class="help">Their speeds, comma separated.</span></label><input type="text" id="sighter_fps" name="sighter_fps" placeholder="2687.9, 2697.5" /></div>
+        </div>
+        <label for="multi_overrides">Fix a shot's ladder <span class="help">shot#=ladder#, or shot#=x to drop it. e.g. 45=3, 47=x</span></label>
+        <input type="text" id="multi_overrides" name="multi_overrides" placeholder="45=3, 47=x" />
+      </details>
+    </div>
+
+    <button type="submit" class="go" id="goBtn">Find my sweet spots</button>
+    <div class="samples">No file handy? Try an example:
+      <button type="button" onclick="runPreset('roundrobin_65cm_4ladder')">6.5 CM, 4 ladders</button>·
+      <button type="button" onclick="runPreset('ladder_7prc_195eol_n565')">7 PRC ladder</button>·
+      <button type="button" onclick="runPreset('factory_7prc_160cx')">7 PRC factory</button>·
+      <button type="button" onclick="runPreset('csv_308_ladder')">.308 CSV</button>
+    </div>
+  </form>
+
+  <div class="err" id="errorBox"></div>
+
+  <section id="results">
+    <h2 class="rtitle" id="resTitle"></h2>
+    <p class="rsub" id="resSub"></p>
+
+    <div class="picks" id="picks"></div>
+    <div id="ladderPicks"></div>
+
+    <div class="stats">
+      <div class="stat"><div class="l">Shots</div><div class="v" id="statShots"></div></div>
+      <div class="stat"><div class="l">Average speed</div><div class="v" id="statAvg"></div></div>
+      <div class="stat"><div class="l"><span class="tip" title="Extreme Spread: fastest shot minus slowest shot. Smaller = more consistent.">Spread (ES)</span></div><div class="v" id="statES"></div></div>
+      <div class="stat"><div class="l">Slowest / fastest</div><div class="v" id="statMinMax" style="font-size:18px"></div></div>
+    </div>
+
+    <div class="card">
+      <h3>Sweet-spot speeds for your barrel<span class="muted" style="font-size:15px;font-weight:400" id="chartFor"></span></h3>
+      <p class="note">A barrel whips a little as the bullet travels. At these speeds the bullet leaves at a calm moment, so groups tend to tighten. Faded rows are over the pressure limit — skip them.</p>
+      <div class="bars" id="bars"></div>
+      <div class="legend"><span><i style="background:var(--good)"></i>Comfortable</span><span><i style="background:var(--warn)"></i>Near the limit</span><span><i style="background:var(--bad)"></i>Over the limit</span><span>▲ your average</span></div>
+      <p class="note" style="margin:14px 0 0">How sure are we? <span class="badge" id="accBadge"></span> <span id="accHelp"></span></p>
+    </div>
+
+    <div class="actions">
+      <button type="button" class="btn2" onclick="window.print()">Print range card</button>
+      <button type="button" class="btn2" onclick="downloadGrtload()">Download GRT file</button>
+    </div>
+
+    <details class="card" id="detailBox">
+      <summary>Shot-by-shot details</summary>
+      <div id="fitLine" class="note" style="margin-top:12px"></div>
+      <div class="scroll"><table class="tbl"><thead><tr><th>#</th><th>Speed</th><th>Charge</th><th>Near sweet spot</th><th>Notes</th></tr></thead><tbody id="shotBody"></tbody></table></div>
+      <div id="multiDetail"></div>
+      <div id="powderBox" class="note" style="margin-top:14px"></div>
+    </details>
+
+    <div class="card warnings">
+      <h3>Warnings &amp; notes</h3>
+      <ul class="wlist" id="wlist"></ul>
+      <div class="disclaimer"><b>Please read:</b> every pressure number here is an <b>estimate</b> worked out from speed — not a measurement. This tool does not give load recipes. Always follow published load data from the powder and bullet makers, start low, work up slowly, and stop at the first sign of pressure (hard bolt lift, flattened primers, ejector marks).</div>
+    </div>
+  </section>
+  <p class="legal">Nodie is open source under the <a href="LICENSE">MIT License</a>. © 2026 Brian Hanson.</p>
+</div>
+
+<script src="shim.js"></script>
+<script>
+let CARTRIDGE_DB = {}, SAMPLES = {}, LAST_RESULT = null;
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const fmt = n => Number(n).toLocaleString();
+
+async function initApp() {
+  const data = await (await fetch('/api/cartridges')).json();
+  CARTRIDGE_DB = data.cartridges; SAMPLES = data.samples;
+  const sel = $('cartridge'); sel.innerHTML = '';
+  for (const k of Object.keys(CARTRIDGE_DB)) {
+    const o = document.createElement('option'); o.value = k; o.textContent = CARTRIDGE_DB[k].label;
+    if (k === '6.5 Creedmoor') o.selected = true; sel.appendChild(o);
+  }
+  onCartridgeChange();
+}
+
+function onCartridgeChange() {
+  const spec = CARTRIDGE_DB[$('cartridge').value]; if (!spec) return;
+  $('bullet_weight_gr').value = spec.default_bullet_gr;
+  $('barrel_length_in').value = spec.default_barrel_in;
+  $('case_h2o_override_gr').placeholder = `Typical: ${spec.case_h2o_gr}`;
+  $('coal_in').placeholder = `Typical: ${spec.coal_in.toFixed(3)}`;
+  $('max_psi').placeholder = fmt(spec.saami_max_psi);
+  const pills = $('bulletPills'); pills.innerHTML = '';
+  for (const w of spec.common_bullets_gr) {
+    const b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.textContent = `${w} gr`;
+    b.onclick = () => { $('bullet_weight_gr').value = w; }; pills.appendChild(b);
+  }
+}
+
+function toggleAmmoMode() {
+  const hl = document.querySelector('input[name="ammo_type"]:checked').value === 'handload';
+  $('factoryFields').style.display = hl ? 'none' : 'block';
+  $('handloadFields').style.display = hl ? 'block' : 'none';
+}
+
+// Drop zone
+const drop = $('drop'), fileIn = $('chrono_file');
+fileIn.addEventListener('change', () => { $('sample_preset').value = ''; $('fname').textContent = fileIn.files[0] ? '✓ ' + fileIn.files[0].name : ''; });
+['dragenter','dragover'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.add('over'); }));
+['dragleave','drop'].forEach(ev => drop.addEventListener(ev, e => { e.preventDefault(); drop.classList.remove('over'); }));
+drop.addEventListener('drop', e => { if (e.dataTransfer.files.length) { fileIn.files = e.dataTransfer.files; fileIn.dispatchEvent(new Event('change')); } });
+
+async function runPreset(id) {
+  const p = SAMPLES[id]; if (!p) return;
+  fileIn.value = ''; $('sample_preset').value = id; $('fname').textContent = '✓ Example: ' + p.filename;
+  $('cartridge').value = p.cartridge; onCartridgeChange();
+  $('bullet_weight_gr').value = p.bullet_weight_gr; $('barrel_length_in').value = p.barrel_length_in;
+  document.querySelectorAll('input[name="ammo_type"]').forEach(r => { r.checked = (r.value === p.ammo_type); }); toggleAmmoMode();
+  $('factory_label').value = p.factory_label || ''; $('powder_name').value = p.powder_name || '';
+  $('charges_text').value = p.charges_text || '';
+  $('start_charge_gr').value = p.start_charge_gr ?? ''; $('step_charge_gr').value = p.step_charge_gr ?? '';
+  $('multi_ladders').value = p.multi_ladders || ''; $('sighter_fps').value = p.sighter_fps || '';
+  $('session_temp_f').value = p.session_temp_f ?? '';
+  await sendAnalyzeRequest(new FormData($('form')));
+}
+
+async function submitForm(e) { e.preventDefault(); await sendAnalyzeRequest(new FormData($('form'))); }
+
+async function sendAnalyzeRequest(fd) {
+  const err = $('errorBox'), btn = $('goBtn'); err.style.display = 'none';
+  btn.disabled = true; btn.textContent = 'Working…';
+  try {
+    const resp = await fetch('/api/analyze', { method: 'POST', body: fd });
+    const data = await resp.json();
+    if (!resp.ok || data.error) throw new Error(data.error || 'Something went wrong.');
+    LAST_RESULT = data; renderResults(data);
+  } catch (e) { err.textContent = e.message; err.style.display = 'block'; }
+  finally { btn.disabled = false; btn.textContent = 'Find my sweet spots'; }
+}
+
+function level(pct, over) {
+  if (over || pct > 100) return ['bad', 'Over the limit'];
+  if (pct >= 90) return ['warn', 'Near the limit'];
+  return ['good', 'Comfortable pressure'];
+}
+const nodeName = n => String(n).replace(' (Half)', '½').replace('.5½', '½');
+
+// Your own tested step nearest a target speed (from your data, not a recipe).
+function nearestStep(points, fps) {
+  let best = null;
+  for (const p of points || []) {
+    if (p.charge_gr == null) continue;
+    const d = Math.abs(p.velocity_fps - fps);
+    if (!best || d < best.d) best = { d, ...p };
+  }
+  return best && best.d <= 30 ? best : null;
+}
+
+function pickCard(kind, blurb, r, note, points) {
+  if (!r) return `<div class="pick"><div class="kind">${kind}</div><div class="line">${esc(note || 'No safe sweet spot found.')}</div></div>`;
+  const [cls, txt] = level(r.pct_of_limit, r.over_limit);
+  const t = r.shoot_temp_f == null ? r.target_fps_59f : r.target_fps_at_temp;
+  const at = r.shoot_temp_f == null ? 'at 59 °F (standard day)' : `at ${r.shoot_temp_f} °F · ${r.target_fps_59f} fps at 59 °F`;
+  const st = nearestStep(points, t);
+  const charge = st ? `Your closest tested charge: <b>${st.charge_gr} gr</b> (${st.velocity_fps} fps, shot ${st.shot_num})`
+                    : `Charge: work up from published data until you reach this speed.`;
+  return `<div class="pick"><div class="kind">${kind}</div>
+    <div class="speed">${fmt(t)} <small>fps</small></div><div class="at">${at} · ${esc(nodeName(r.node))}</div>
+    <span class="pill ${cls}">${txt} · ~${Math.round(r.pct_of_limit)}% of max</span>
+    <div class="line">${blurb}</div><div class="charge">${charge}</div></div>`;
+}
+
+function renderResults(d) {
+  $('results').style.display = 'block';
+  const inp = d.inputs, ch = d.chrono, vt = d.velocity_targets;
+  const what = inp.ammo_type === 'Handloads' ? (inp.powder_name || 'Handloads') : (inp.factory_label || 'Factory ammo');
+  $('resTitle').textContent = d.multi ? `${inp.cartridge_label} · ${d.multi.ladders.length} ladders · ${inp.barrel_length_in}" barrel`
+                                       : `${inp.cartridge_label} · ${inp.bullet_weight_gr} gr · ${inp.barrel_length_in}" barrel`;
+  document.querySelector('.stats').style.display = d.multi ? 'none' : '';
+  $('chartFor').textContent = d.multi ? ` (shown for ${inp.bullet_weight_gr} gr — each ladder's own picks are above)` : '';
+  $('resSub').textContent = `${what} · ${ch.session_datetime || ''}`;
+
+  // Points (charge, speed) from your own data for "closest tested charge"
+  const mainPts = d.ladder_fit ? d.ladder_fit.points.map(p => ({ shot_num: p.shot_num, charge_gr: p.charge_gr, velocity_fps: p.velocity_fps }))
+                               : ch.shots.filter(s => s.charge_gr != null).map(s => ({ shot_num: s.shot_num, charge_gr: s.charge_gr, velocity_fps: s.velocity_fps }));
+  const pk = vt.picks;
+  const multi = d.multi;
+  if (multi) {
+    $('picks').innerHTML = '';
+    let h = '';
+    for (const l of multi.ladders) {
+      h += `<h3 style="margin:8px 0 12px">${esc(l.name)} <span class="muted" style="font-weight:400;font-size:16px">· ${l.shots_used} shots</span></h3><div class="picks">` +
+        pickCard('Daily Driver', 'Easy on brass and barrel. Great for practice.', l.picks.daily_driver, l.picks.daily_note, l.points) +
+        pickCard('Hunting', 'Fastest sweet spot that stays under the safety cap.', l.picks.hunting, l.picks.hunting_note, l.points) + '</div>';
+    }
+    $('ladderPicks').innerHTML = h;
+  } else {
+    $('ladderPicks').innerHTML = '';
+    $('picks').innerHTML =
+      pickCard('Daily Driver', 'Easy on brass and barrel. Great for practice.', pk.daily_driver, pk.daily_note, mainPts) +
+      pickCard('Hunting', 'Fastest sweet spot that stays under the safety cap.', pk.hunting, pk.hunting_note, mainPts);
+  }
+
+  $('statShots').textContent = ch.shot_count;
+  $('statAvg').textContent = `${ch.avg_fps.toFixed(0)} fps`;
+  $('statES').textContent = `${ch.es_fps.toFixed(0)} fps`;
+  $('statMinMax').textContent = `${ch.min_fps.toFixed(0)} / ${ch.max_fps.toFixed(0)} fps`;
+
+  // Node chart
+  const rows = [...vt.targets].sort((a, b) => b.target_fps_59f - a.target_fps_59f);
+  const showRows = rows.filter(r => !r.over_limit || r.pct_of_limit < 130);
+  const fpsOf = r => r.shoot_temp_f == null ? r.target_fps_59f : r.target_fps_at_temp;
+  const vals = showRows.map(fpsOf), lo = Math.min(...vals, ch.avg_fps) - 120, hi = Math.max(...vals, ch.avg_fps) + 40;
+  const pos = v => Math.max(4, Math.min(100, (v - lo) / (hi - lo) * 100));
+  const ddN = pk.daily_driver && pk.daily_driver.node, huN = pk.hunting && pk.hunting.node;
+  $('bars').innerHTML = showRows.map(r => {
+    const [cls] = level(r.pct_of_limit, r.over_limit);
+    const tag = r.node === huN ? 'Hunting' : (r.node === ddN ? 'Daily Driver' : '');
+    return `<div class="bar ${r.over_limit ? 'off' : ''}" title="Est. ${fmt(r.est_psi)} PSI (${r.pct_of_limit}% of max)">
+      <div class="name">${esc(nodeName(r.node))}</div>
+      <div class="track"><div class="fill" style="width:${pos(fpsOf(r))}%;background:var(--${cls})"></div>${tag ? `<span class="tag">${tag}</span>` : ''}
+        <div style="position:absolute;top:0;bottom:0;left:calc(${pos(ch.avg_fps)}% - 1px);width:2px;background:#fff;opacity:.7"></div></div>
+      <div class="fps">${fmt(fpsOf(r))}</div></div>`;
+  }).join('') + `<div class="bar"><div class="name muted">You</div><div class="track" style="background:none"><div style="position:absolute;left:calc(${pos(ch.avg_fps)}% - 7px);top:3px;color:#fff">▲</div></div><div class="fps muted">${ch.avg_fps.toFixed(0)}</div></div>`;
+
+  const accWords = { Basic: 'Good start — add details below to sharpen it.', Improved: 'Better — a few more details would sharpen it further.', Best: 'Very good — you gave us the details that matter most.' };
+  $('accBadge').textContent = vt.accuracy_level;
+  $('accHelp').textContent = accWords[vt.accuracy_level] || '';
+
+  // Weather line under the field
+  if (d.weather) $('wxResult').textContent = d.weather.ok ? `Found: ${d.weather.label}${d.weather.used_for_session_temp ? ' — used for your results' : ' — your typed temperature was kept'}` : `Couldn't look up weather: ${d.weather.reason}`;
+  else $('wxResult').textContent = '';
+  const ww = $('where_when'), sd = /^(\d{4})-(\d{2})-(\d{2}) (\d{2}):(\d{2})/.exec(ch.session_mid_local || ch.session_datetime || '');
+  if (!ww.value && sd) { const hh = +sd[4]; ww.placeholder = `e.g. ${(hh % 12) || 12}:${sd[5]}${hh >= 12 ? 'pm' : 'am'} in Your Town, ST on ${+sd[2]}/${+sd[3]}/${sd[1]}`; }
+
+  // Details
+  $('fitLine').textContent = d.ladder_fit ? `Ladder fit: ${d.ladder_fit.verdict} (R² ${d.ladder_fit.r_squared.toFixed(3)}, +${d.ladder_fit.slope_fps_per_gr.toFixed(1)} fps per grain).` : '';
+  $('shotBody').innerHTML = ch.shots.map(s => `<tr><td>${s.shot_num}</td><td><b>${s.velocity_fps.toFixed(1)}</b></td><td>${s.charge_gr != null ? s.charge_gr.toFixed(1) + ' gr' : '—'}</td><td>${esc(s.near_obt_node) || '—'}</td><td>${esc(s.notes) || ''}</td></tr>`).join('');
+  if (multi) {
+    const dl = multi.deinterleave;
+    $('multiDetail').innerHTML = `<h3 style="margin:20px 0 8px">Ladders side by side</h3><div class="scroll"><table class="tbl"><thead><tr><th>Ladder</th><th>Shots</th><th><span class="tip" title="How steadily speed rose with each step (1.0 = perfectly steady)">Steadiness R²</span></th><th>fps per grain</th><th><span class="tip" title="Steps where speed barely changed — often a forgiving load">Flat spots</span></th></tr></thead><tbody>` +
+      multi.ladders.map(l => `<tr><td>${esc(l.name)}</td><td>${l.shots_used}</td><td>${l.r_squared}</td><td>${l.slope_fps_per_gr}</td><td>${l.flat_spots.map(esc).join('<br>') || '—'}</td></tr>`).join('') + '</tbody></table></div>' +
+      '<h3 style="margin:20px 0 8px">Which shot went with which ladder</h3><div class="note">' + dl.assignments.map(a => `#${a.shot_num} ${a.velocity_fps} → ${esc(a.ladder_name)} ${a.charge_gr ?? ''} gr${a.excluded ? ' (skipped)' : ''}${a.override ? ' (you set this)' : ''}`).join('<br>') + '</div>';
+  } else $('multiDetail').innerHTML = '';
+  $('powderBox').innerHTML = d.candidate_powders.length ? '<b>Powders that often work here:</b> ' + d.candidate_powders.map(p => esc(p.name)).join(', ') : '';
+
+  renderWarnings(d);
+  $('results').scrollIntoView({ behavior: 'smooth' });
+}
+
+function renderWarnings(d) {
+  const W = [], add = (cls, title, body) => W.push(`<li class="${cls}"><b>${title}</b>${body}</li>`);
+  const vt = d.velocity_targets, a = vt.assumptions, pl = d.pressure_limit, pr = d.pressure;
+  if (d.multi) {
+    for (const l of d.multi.ladders) if (l.over_limit_steps_gr.length)
+      add('bad', `${esc(l.name)}: top steps likely over max pressure`, `Charges ${l.over_limit_steps_gr.join(', ')} gr are estimated above ${fmt(pl.max_psi)} PSI. Don't load these.`);
+    const dl = d.multi.deinterleave;
+    for (const f of dl.flags) add('warn', `Check shot ${f.shot_num} (${f.velocity_fps} fps)`, `We matched it to ${esc(f.ladder_name)} at ${f.charge_gr} gr, but ${esc(f.flags.join('; ').replace('outside user min/max bounds', "it's outside the slowest/fastest speeds you entered"))}. If it belongs elsewhere, fix it under "Fix a shot's ladder".`);
+    const cm = Object.entries(dl.count_mismatch || {});
+    if (cm.length) add('info', 'Shot counts differ from your plan', cm.map(([k, v]) => `${esc(k)}: ${v[0]} of ${v[1]}`).join(', ') + '.');
+  } else if (pr.percent_of_saami_max >= 100) {
+    add('bad', 'Your fastest shot looks over max pressure', `Estimated peak ~${fmt(pr.estimated_peak_shot_psi)} PSI vs ${fmt(pr.saami_max_psi)} PSI max. Check brass for pressure signs and back off.`);
+  } else if (pr.color === 'yellow') {
+    add('warn', 'Your fastest shot is near max pressure', `Estimated peak ~${fmt(pr.estimated_peak_shot_psi)} PSI vs ${fmt(pr.saami_max_psi)} PSI max.`);
+  }
+  if (pl.over_limit_count) add('info', `${pl.over_limit_count} faster sweet spots hidden`, `They're estimated above ${fmt(pl.max_psi)} PSI (${esc(pl.source)}), so they're faded out and never suggested.`);
+  const pk = vt.picks;
+  if (pk.daily_note && !d.multi) add('info', 'Daily Driver', esc(pk.daily_note));
+  if (pk.hunting_note && !d.multi) add('info', 'Hunting', esc(pk.hunting_note));
+  if (a.temp_coef_is_assumption) add('info', 'Temperature adjustment is a general rule', `Speeds are adjusted ${a.temp_coef_fps_per_f} fps per °F — a typical value, not your powder's exact number.`);
+  if (!vt.inputs_used.temperature) add('info', 'No temperature given', 'Speeds are shown for a standard 59 °F day. Add where & when you shot for better numbers.');
+  if (vt.inputs_used.barrel_contour) add('info', 'Barrel thickness adjustment is approximate', 'Our own small correction (about ±1.5%), not part of the published sweet-spot model.');
+  if (vt.next_improvements.length) add('info', 'To sharpen these results', vt.next_improvements.map(esc).join(' '));
+  if (d.weather && d.weather.ok) add('info', 'Weather source', `${esc(d.weather.source)} (reading at ${esc(d.weather.obs_time_local)}). Thanks to the Iowa Environmental Mesonet / Open-Meteo for free weather records.`);
+  else if (d.weather) add('warn', 'Weather lookup failed', esc(d.weather.reason));
+  add('info', 'Where the sweet spots come from', 'Chris Long\'s Optimal Barrel Time idea, scaled to your barrel length. Pressure is estimated from speed, bullet weight and case size.');
+  $('wlist').innerHTML = W.join('');
+}
+
+function downloadGrtload() {
+  if (!LAST_RESULT || !LAST_RESULT.grtload_xml) return;
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([LAST_RESULT.grtload_xml], { type: 'application/xml' }));
+  a.download = `${LAST_RESULT.inputs.cartridge.replace(/[^a-zA-Z0-9]/g, '_')}_${LAST_RESULT.inputs.bullet_weight_gr}gr_NodeFinder.grtload`;
+  a.click();
+}
+
+initApp();
+</script>
+</body>
+</html>
